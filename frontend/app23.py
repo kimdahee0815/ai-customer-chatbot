@@ -22,7 +22,7 @@ if "messages" not in st.session_state:
     ]
     
 for message in st.session_state.messages:
-    with st.chat_message(message):
+    with st.chat_message(message["role"]):
         st.markdown(message["content"])
             
 prompt = st.chat_input("예: 배송이 늦어지고 있어요.")
