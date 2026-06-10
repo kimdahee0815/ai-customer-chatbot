@@ -16,3 +16,4 @@ if message:
             st.error(f"백엔드 호출에 실패: {exc}")
         else:
             st.write(data.get("message", data))
+            

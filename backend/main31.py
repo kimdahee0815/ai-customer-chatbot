@@ -1,6 +1,8 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 from pydantic import Field
+from fastapi.middleware.cors import CORSMiddleware
+
 
 class ChatRequest(BaseModel):
     """프론트엔드가 /chat으로 보내는 요청 형식"""
@@ -11,6 +13,13 @@ class ChatResponse(BaseModel):
     message: str
     
 app = FastAPI(title="고객 상담 챗봇")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://127.0.0.1:8501"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
 
 @app.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest) -> ChatResponse:

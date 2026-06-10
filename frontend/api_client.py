@@ -1,5 +1,5 @@
 import os
-from typing import Any
+from typing import Any, Iterator
 import httpx
 import requests
 from dotenv import load_dotenv
@@ -8,7 +8,7 @@ load_dotenv()
 
 def get_backend_url() -> str:
     """FastAPI 백엔드 기본 주소를 반환"""
-    return os.getenv('BACKEND_URL', "http://localhost:8001").rstrip("/")
+    return os.getenv('BACKEND_URL', "http://localhost:8000").rstrip("/")
 
 def call_chat_api(message: str)->dict[str, Any]:
     """백엔드 /chat 엔드포인트에 일반 POST 요청을 보내고 JSON응답을 반환"""
@@ -20,5 +20,26 @@ def call_chat_api(message: str)->dict[str, Any]:
         # HTTPStatusError 익셉션 발생
         response.raise_for_status()
         
-        return response.json()
-        
+        return response.json()["answer"]
+
+def stream_chat(message: str)->Iterator[str]:
+    """스트리밍 응답을 줄 단위로 일고 토큰을 하나씩 내보낸다. (SSE)"""
+    payload = {"message": message}
+    with httpx.stream(
+        "POST",
+        f"{get_backend_url()}/chat/stream",
+        json=payload,
+        timeout=30.0
+    ) as response:
+        response.raise_for_status()
+        # SSE 응답은 줄 단위로 흘러오므로 iter_lines()로 반복
+        for line in response.iter_lines():
+            # 빈 줄은 이벤트 경계일 수 있다, 건너뜀
+            if not line:
+                continue
+            if not line.startswith("data:"):
+                continue
+            token = line[5:].strip()
+            if token == "[DONE]":
+                break
+            yield token
