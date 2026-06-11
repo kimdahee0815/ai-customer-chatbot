@@ -3,8 +3,16 @@ from typing import Any, Iterator
 import httpx
 import requests
 from dotenv import load_dotenv
+from dataclasses import dataclass
+import json
 
 load_dotenv()
+
+@dataclass(frozen=True)
+class ChatStreamEvent:
+    """프론트 화면이 이해하는 채팅 스트림 이벤트"""
+    event_type: str
+    text: str
 
 def get_backend_url() -> str:
     """FastAPI 백엔드 기본 주소를 반환"""
@@ -21,29 +29,56 @@ def call_chat_api(message: str)->dict[str, Any]:
         response.raise_for_status()
         
         return response.json()["answer"]
+    
+def parse_see_line(line: str) -> ChatStreamEvent | None:
+    """SSE data 라인을 token/status/done 이벤트로 변환"""
+    # if line.startswith("data:"):
+    #     return None
+    
+    raw_payload = line[len("data:"):].strip()
+    if raw_payload == "[DONE]":
+        return ChatStreamEvent(event_type="done", text="")
+    
+    # token 처리
+    payload = json.loads(raw_payload)
+    payload_type = payload.get("type", "status")
+    if payload_type == "token":
+        return ChatStreamEvent(event_type="token", text=payload.get("delta", ""))
+    
+    # status 처리
+    return ChatStreamEvent(event_type="staus", text=payload.get("label", "상태를 갱신했습니다."))
 
-def stream_chat(message: str)->Iterator[str]:
-    """스트리밍 응답을 줄 단위로 일고 토큰을 하나씩 내보낸다. (SSE)"""
+def stream_chat(message: str, mode: str = "agents")->Iterator[str]:
+    """스트리밍 응답을 줄 단위로 일고 토큰을 하나씩 내보낸다. (SSE)
+    FastAPI SSE endpoint를 호출하고 화면용 이벤트를 순서대로 반환"""
+    endpoint = "/agents/stream" if mode=="agents" else "/chat/stream"
+    url = f"{get_backend_url()}{endpoint}" # http://localhost:8000
     payload = {"message": message}
     try:
         with httpx.stream(
             "POST",
-            f"{get_backend_url()}/chat/stream",
+            url,
             json=payload,
             timeout=30.0
         ) as response:
             response.raise_for_status()
             # SSE 응답은 줄 단위로 흘러오므로 iter_lines()로 반복
             for line in response.iter_lines():
-                # 빈 줄은 이벤트 경계일 수 있다, 건너뜀
-                if not line:
+                event = parse_see_line(line)
+                if event is None:
                     continue
-                if not line.startswith("data:"):
-                    continue
-                token = line[5:].strip()
-                if token == "[DONE]":
+                yield event
+                if event.event_type == "done":
                     break
-                yield token
+                # 빈 줄은 이벤트 경계일 수 있다, 건너뜀
+                # if not line:
+                #     continue
+                # if not line.startswith("data:"):
+                #     continue
+                # token = line[5:].strip()
+                # if token == "[DONE]":
+                #     break
+                # yield token
     except httpx.ConnectError as exc:
         raise RuntimeError("백엔드 실행 여부와 8000번 포트를 확인하세요.") from exc
     except httpx.HTTPStatusError as exc:
@@ -53,3 +88,13 @@ def stream_chat(message: str)->Iterator[str]:
     except httpx.ReadTimeout as exc:
         # SSE 라인이 오래 오지 않거나 종료 신호가 누락.
         raise RuntimeError("SSE라인 수진이 지연되었습니다. [DONE]처리와 백엔드 yield확인!") from exc
+
+
+if __name__ == "__main__":
+    sample_lines = [
+        'data: {"type": "status", "label": "담당 전환: refund_agent"}',
+        'data: {"type": "token", "delta": "환불 요청을 "}',
+        'data: [DONE]'
+    ]
+    for sample_line in sample_lines:
+        print(parse_see_line(sample_line))
