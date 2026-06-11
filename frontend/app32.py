@@ -8,5 +8,3 @@ if st.button("전송") and message:
         collected += token
     
     st.markdown(collected) 
-    
-    

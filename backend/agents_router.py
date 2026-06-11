@@ -8,6 +8,8 @@ from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from dotenv import load_dotenv
+from backend.agents_config import select_agent
+from pydantic import Field
 
 load_dotenv()
 
@@ -15,8 +17,8 @@ router = APIRouter(prefix="/agents", tags=["agents"])
 
 class AgentStreamRequest(BaseModel):
     """Agents SDK 스트림 라우터가 받을 요청 내용"""
-    message: str
-    agent_type: Literal["general", "technical", "refund", "sales"] = "general"
+    message: str = Field(min_length=1)
+    agent_type: Literal["triage", "general", "technical", "refund", "sales"] = "triage"
     
 # 일반 문의 담당자는 고객의 요청을 분류하고 기본 안내를 맡습니다.
 general_agent = Agent(
@@ -53,16 +55,6 @@ sales_agent = Agent(
         "고객의 규모, 예산, 필요한 기능을 물어보고 선택지를 정리합니다."
     )
 )
-
-def select_agent(agent_type: str) -> Agent:
-    """요청된 상담 유형에 맞는 에이전트를 반환"""
-    agents_by_type = {
-        "general": general_agent,
-        "technical": technical_agent,
-        "refund": refund_agent,
-        "sales": sales_agent
-    }
-    return agents_by_type.get(agent_type, general_agent)
 
 def extract_txt_delta(event: object) -> str|None:
     """스트림 이벤트에서 화면으로 보낼 텍스트 조각만 꺼내온다"""
