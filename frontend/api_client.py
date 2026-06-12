@@ -63,7 +63,7 @@ def stream_chat(message: str, mode: str = "멀티에이전트") -> Iterator[Chat
   FastAPI SSE endpoint를 호출하고 화면용 이벤트를 순서대로 반환
   """
   endpoint = "/agents/stream" if mode == "멀티에이전트" else "/chat/stream"
-  url = f"{get_backend_url()}{endpoint}" # http://localhost:8001/ + endpoint => http://localhost:8001/agents/stream
+  url = f"{get_backend_url()}{endpoint}" # http://localhost:8000/ + endpoint => http://localhost:8000/agents/stream
 
   payload = {"message": message}
   try:
@@ -76,6 +76,7 @@ def stream_chat(message: str, mode: str = "멀티에이전트") -> Iterator[Chat
       response.raise_for_status()
       # SSE 응답은 줄 단위로 흘러오므로 iter_lines()로 반복합니다.
       for line in response.iter_lines():
+        print(repr(line)) 
         event = parse_sse_line(line)
         if event is None:
           continue
@@ -84,7 +85,7 @@ def stream_chat(message: str, mode: str = "멀티에이전트") -> Iterator[Chat
           break
   except httpx.ConnectError as exc:
     # 백엔드 서버가 꺼졌거나 포트가 다를때.
-    raise RuntimeError("백엔드 실행 여부와 8001번 포트를 확인하세요.") from exc
+    raise RuntimeError("백엔드 실행 여부와 8000번 포트를 확인하세요.") from exc
   except httpx.HTTPStatusError as exc:
     # 404 는 path (url) 오타, 500은  백엔드 내부 오류 가능성
     status_code = exc.response.status_code
