@@ -4,6 +4,7 @@ import os
 from backend import stream_router
 from backend import agents_router
 from backend import files_router
+from backend import feedback_router
 
 app = FastAPI(title="Customer Support Chatbot API")
 
@@ -21,6 +22,7 @@ app.add_middleware(
 app.include_router(stream_router.router)
 app.include_router(agents_router.router)
 app.include_router(files_router.router)
+app.include_router(feedback_router.router)
 
 @app.get("/health")
 def health_check() -> dict[str, str]:    

@@ -34,3 +34,38 @@ def render_feedback_for_message(conversation_id: str, message: dict[str, str], i
     
     message_id = message["message_id"]
     widget_key=  f"fb_{message_id}_{index}"
+    already_submitted = message_id in st.session_state.submitted_feedback
+    
+    feedback_value = st.feedback(
+        "thumbs",
+        key=widget_key,
+        disabled=already_submitted
+    )
+    # 선택 전 None 상태는 저장 요청으로 보내지 X
+    if feedback_value is None:
+        return
+    # 이미 저장한 메시지는 리턴이 일어나도 다시 보내지 X
+    if already_submitted:
+        st.caption("이미 저장된 피드백입니다.")
+        return
+    
+    rating = thumb_to_rating(feedback_value)
+    result = post_feedback(conversation_id, message_id, rating)
+    st.session_state.submitted_feedback.add(message_id)
+    st.caption(f"저장 완료: {result['message_id']} / {result['rating']}")
+    
+demo_message = {
+    "role":"assistant",
+    "message_id": "msg-ai-003",
+    "content":"환불 절차는 주문 번호 확인 뒤 고객센터에서 접수할 수 있습니다."
+}
+
+st.title("피드백 데모")
+
+with st.chat_message("assistant"):
+    st.write(demo_message["content"])
+    render_feedback_for_message(
+        conversation_id="conv-001",
+        message=demo_message,
+        index=0
+    )
