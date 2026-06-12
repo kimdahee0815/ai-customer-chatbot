@@ -14,7 +14,7 @@ def message_to_markdown(message: dict[str,Any])-> str:
     """대화 메시지 한 건을 마크다운 문단으로 변환"""
     role = str(message.get("role", "unknown"))
     content = str(message.get("content", "")).strip()
-    tool_calls = message.get("tool_calls, []")
+    tool_calls = message.get("tool_calls", [])
     
     lines = [f"### {role}", "", content or "(내용 없음)"]
     if tool_calls:
@@ -56,11 +56,11 @@ def export_messages_json(messages: list[dict[str, Any]]) -> str:
 def calculate_message_stats(messages: list[dict[str, Any]]) -> dict[str, float | int]:
     """대화 기록에서 대시보드 지표를 계산"""
     total_count = len(messages)
-    user_count = sum(1 for message in messages if messages.get("role") == "user")
-    assistant_count = sum(1 for message in messages if messages.get("role") == "assistant")
-    
+    user_count = sum(1 for message in messages if message.get("role") == "user")
+    assistant_count = sum(1 for message in messages if message.get("role") == "assistant")
+
     assistant_length = [
-        len(str(messages.get("content", "")))
+        len(str(message.get("content", "")))
         for message in messages
         if message.get("role") == "assistant"
     ]
@@ -117,6 +117,20 @@ stats = calculate_message_stats(messages)
 left, middle, right = st.columns(3)
 
 left.metric("총 메시지", int(stats["total_count"]))
+middle.metric("사용자 메시지", int(stats["user_count"]))
+right.metric("평균 AI 응답 길이", f"{stats['average_response_length']:.0f}자")
+
+chart_data = {
+    "사용자": [int(stats["user_count"])],
+    "AI": [int(stats["assistant_count"])]
+}
+
+st.bar_chart(chart_data)
+# st.line_chart
+# st.histogram
+
+st.write("AI 메시지 비율")
+st.progress(float(stats["assistant_ratio"]))
 
 if not messages:
     st.info("대화가 쌓이면 다운로드 버튼을 사용할 수 있습니다.")

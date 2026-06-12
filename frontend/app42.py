@@ -7,7 +7,8 @@ def build_navigation()->None:
         st.Page("pages/chat.py", title="Chat"),
         st.Page("pages/admin.py", title="Admin"),
         st.Page("pages/documents.py", title="문서 분석"),
-        st.Page("pages/settings.py", title="Settings")
+        st.Page("pages/settings.py", title="Settings"),
+        st.Page("pages/dashboard.py", title="DashBoard")
     ]
 
     navigation = st.navigation(pages)

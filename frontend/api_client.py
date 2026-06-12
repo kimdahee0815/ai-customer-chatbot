@@ -16,7 +16,7 @@ class ChatStreamEvent:
 
 def get_backend_url() -> str:
   """FastAPI 백엔드 기본 주소를 반환"""
-  return os.getenv("BACKEND_URL", "http://localhost:8001").rstrip("/")
+  return os.getenv("BACKEND_URL", "http://localhost:8000").rstrip("/")
 
 def call_chat_api(message: str) -> Any:
   """백엔드 /chat 엔드포인드에 일반 POST 요청을 보내고 JSON응답을 반환"""
